@@ -41,7 +41,7 @@ def dor():
                 print(var.group(0))
                 _tmp.append(var.group(0))
       print("----------------")
-      text.show()
+      # text.show() # for debugging
       code.append(" ".join(_tmp))
   print(code)
 
@@ -63,7 +63,7 @@ def imageCrop(image):
           maximalY = max(item2["geometry"][2][1], item2["geometry"][3][1])
           diffHeight = maximalY - minimalY
           preHeight = minimalY * h
-          endHeight = (minimalY + (diffHeight * 12)) * h
+          endHeight = (minimalY + (diffHeight * 8)) * h
 
           if item2["geometry"][0][1] != item2["geometry"][1][1]:
             k = 1
@@ -75,7 +75,7 @@ def imageCrop(image):
             angle = k*math.degrees(math.atan(b/a))
 
 
-  text.show()
+  # text.show() # for debugging
   return (preWidth, preHeight, endWidth, endHeight), angle
 
 
