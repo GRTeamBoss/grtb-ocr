@@ -1,26 +1,17 @@
-# Running {running}
+# Running
 
 ```bash
-pip install -r requirements.txt
-python3 main.py
+python3 -m venv .env
+. ./.env/bin/activate
+pip install poetry
+poetry install
+export TELEGRAM_TOKEN=[YOUR_TOKEN]
+poetry run python grtb_ocr
 ```
 
-## Installation {installation}
+## Installation
 
-### pytesseract {pytesseract}
-
-```bash
-sudo apt install tesseract-ocr
-pip install pytesseract
-```
-
-### easyOCR {easyocr}
-
-```bash
-pip install easyocr
-```
-
-### docTR {doctr}
+### docTR
 
 ```bash
 pip install python-doctr
