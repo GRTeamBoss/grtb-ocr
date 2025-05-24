@@ -43,8 +43,7 @@ async def typeFileHandler(message: Message) -> None:
 async def typePhotoHandler(message: Message) -> None:
   source = await bot.download(message.photo[-1])
   detection = OCR(source.read()).detect()
-  detectionFormat = "\n".join(detection)
-  await message.answer(f"{detectionFormat}")
+  await message.answer(f"{detection}")
 
 
 async def onStartup(bot: Bot) -> None:
