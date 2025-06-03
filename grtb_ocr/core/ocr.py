@@ -20,29 +20,31 @@ class OCR:
   def detect(self) -> str:
     crops = self.imageCrop(self.img.convert("RGB"))
     result = []
-    for imgCrop in crops:
-      crop, angle = imgCrop
-      img = self.img.convert("RGB").rotate(angle).crop(crop)
-      __tmp = []
-      text = self.__MODEL([numpy.asarray(img)]).export()
-      for item in text["pages"][0]["blocks"]:
-        for item1 in item["lines"]:
-          for item2 in item1["words"]:
-            if len(item2["value"]) == 3 and item2["value"] not in self.__BLOCKWORDS and item2["confidence"] >= 0.75 and item2["crop_orientation"]["confidence"] >= 0.9:
-              var = re.search("[A-Z]{3}", item2["value"])
-              if var == None:
-                pass
+    if crops:
+      for imgCrop in crops:
+        crop, angle = imgCrop
+        img = self.img.convert("RGB").rotate(angle).crop(crop)
+        __tmp = ["Nothing detected!"]
+        text = self.__MODEL([numpy.asarray(img)]).export()
+        for item in text["pages"][0]["blocks"]:
+          for item1 in item["lines"]:
+            for item2 in item1["words"]:
+              if len(item2["value"]) == 3 and item2["value"] not in self.__BLOCKWORDS and item2["confidence"] >= 0.75 and item2["crop_orientation"]["confidence"] >= 0.9:
+                var = re.search("[A-Z]{3}", item2["value"])
+                if var == None:
+                  pass
+                else:
+                  __tmp.append(var.group(0))
               else:
-                __tmp.append(var.group(0))
-            else:
-              pass
+                pass
 
-      if __tmp:
-        result.append(" ".join(__tmp))
-      else:
-        result.append("Nothing detected!")
+        if len(__tmp) > 1:
+          result.append(" ".join(__tmp[1::]))
+        else:
+          result.append(__tmp[0])
 
-    return "\n".join(result)
+      return str("\n".join(result))
+    return "Nothing detected!\n"
 
   def imageCrop(self, img: Image) -> list[tuple[tuple[int, int, int, int], float]]:
     images = []

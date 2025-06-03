@@ -6,8 +6,7 @@
 
 # Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
 
-ARG PYTHON_VERSION=3.12.9
-FROM python:${PYTHON_VERSION}-slim as base
+FROM python:3.12-slim AS base
 
 # Prevents Python from writing pyc files.
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -16,11 +15,16 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # the application crashes without emitting any logs due to buffering.
 ENV PYTHONUNBUFFERED=1
 
+ENV DOCTR_CACHE_DIR=/app/.cache
+ENV XDG_CACHE_HOME=/app/.cache
+
+
 WORKDIR /app
 
 # Create a non-privileged user that the app will run under.
 # See https://docs.docker.com/go/dockerfile-user-best-practices/
 ARG UID=10001
+RUN mkdir -p /app/.cache && chmod -R 777 /app/.cache
 RUN adduser \
     --disabled-password \
     --gecos "" \
@@ -34,9 +38,20 @@ RUN adduser \
 # Leverage a cache mount to /root/.cache/pip to speed up subsequent builds.
 # Leverage a bind mount to requirements.txt to avoid having to copy them into
 # into this layer.
-RUN --mount=type=cache,target=/root/.cache/pip \
+
+RUN --mount=type=cache,target=.cache/pip \
     --mount=type=bind,source=requirements.txt,target=requirements.txt \
-    python -m pip install -r requirements.txt;
+    python3.12 -m pip install -r requirements.txt
+
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 # Switch to the non-privileged user to run the application.
 USER appuser
@@ -48,4 +63,4 @@ COPY . .
 EXPOSE 8080
 
 # Run the application.
-CMD poetry run python grtb_ocr
+CMD ["python3.12", "grtb_ocr/__main__.py"]
