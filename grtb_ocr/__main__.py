@@ -16,6 +16,10 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 from core.ocr import OCR
 
 TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN")
+
+dp = Dispatcher()
+bot = Bot(token=TELEGRAM_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+
 WEBSERVER_HOST = "127.0.0.1"
 WEBSERVER_PORT = 8080
 WEBHOOK_PATH = "/webhook"
@@ -24,9 +28,7 @@ BASE_WEBHOOK_URL = getenv("BASE_WEBHOOK_URL")
 WEBHOOK_SSL_PRIV = getenv("WEBHOOK_SSL_PRIV")
 WEBHOOK_SSL_CERT = getenv("WEBHOOK_SSL_CERT")
 
-dp = Dispatcher()
 router = Router()
-bot = Bot(token=TELEGRAM_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
 @router.message(CommandStart())
 async def commandStartHandler(message: Message) -> None:
@@ -53,7 +55,7 @@ async def typePhotoHandler(message: Message) -> None:
 
 async def onStartup(bot: Bot) -> None:
   # await bot.set_webhook(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}", certificate=FSInputFile(WEBHOOK_SSL_CERT), secret_token=WEBHOOK_SECRET,)
-  await bot.set_webhook(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}", secret_token=WEBHOOK_SECRET,)
+  await bot.set_webhook(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}", secret_token=WEBHOOK_SECRET)
 
 
 def main() -> None:
