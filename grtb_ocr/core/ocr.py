@@ -5,74 +5,214 @@ from PIL import Image
 from doctr.models import ocr_predictor
 import numpy
 import math
+import statistics
+from string import ascii_uppercase
 import io
 
 class OCR:
 
   __MODEL = ocr_predictor(det_arch="db_resnet50", reco_arch="crnn_vgg16_bn", pretrained=True, detect_orientation=True, detect_language=True, assume_straight_pages=False, preserve_aspect_ratio=True)
-  __BLOCKWORDS = ("SMS", "PIN")
+  __BLOCKWORDS = ("SMS", "PIN", "EMS")
+  __BLOCKLETTERS = ("C", "H", "I", "J", "O", "Q", "U", "W", "V", "Y")
+  __DETECTION = (r".IMOYA", r"H.MOYA", r"HI.OYA", r"HIM.YA", r"HIMO.A", r"HIMOY.")
 
 
   def __init__(self, blob: bytes) -> None:
     self.blob = blob
     self.img = Image.open(io.BytesIO(self.blob))
 
-  def detect(self) -> str:
-    crops = self.imageCrop(self.img.convert("RGB"))
+  def detect(self) -> tuple[list[io.BytesIO], list[str]]:
+    crops = self.imageCrop()
     result = []
-    if crops:
-      for imgCrop in crops:
-        crop, angle = imgCrop
-        img = self.img.convert("RGB").rotate(angle).crop(crop)
-        __tmp = ["Nothing detected!"]
-        text = self.__MODEL([numpy.asarray(img)]).export()
-        for item in text["pages"][0]["blocks"]:
-          for item1 in item["lines"]:
-            for item2 in item1["words"]:
-              if len(item2["value"]) == 3 and item2["value"] not in self.__BLOCKWORDS and item2["confidence"] >= 0.75 and item2["crop_orientation"]["confidence"] >= 0.9:
-                var = re.search("[A-Z]{3}", item2["value"])
-                if var == None:
-                  pass
-                else:
-                  __tmp.append(var.group(0))
-              else:
-                pass
+    imagesIO = []
+    detectedCode = []
+    for imgCrop in crops:
+      detectedCode = []
+      crop, angle, detectedCode = imgCrop
 
-        if len(__tmp) > 1:
-          result.append(" ".join(__tmp[1::]))
-        else:
-          result.append(__tmp[0])
+      img = self.img.convert("RGB").rotate(angle).crop(crop)
+      croppedImageIO = io.BytesIO()
+      img.save(croppedImageIO, "JPEG")
+      croppedImageIO.seek(0)
 
-      return str("\n".join(result))
-    return "Nothing detected!\n"
+      imagesIO.append(croppedImageIO.read())
+      result.append(" ".join(detectedCode))
 
-  def imageCrop(self, img: Image) -> list[tuple[tuple[int, int, int, int], float]]:
+    return imagesIO, result
+
+  def imageCrop(self) -> list[tuple[tuple[int, int, int, int], float]]:
     images = []
+    detectedWords = []
+    leftX = 0
+    rightX = 0
+    topY = 0
+    bottomY = 0
+    img, angle, _, words = self.findCodeInImage(0.0)
     w, h = img.size
-    angle = 0.0
-    text = self.__MODEL([numpy.asarray(img)])
-    for item in text.export()["pages"][0]["blocks"]:
+    eta = 0
+    upsideDown = False
+
+    for item in words:
+      detectedWords.append([min(item[1][0][1], item[1][1][1]), item[0]])
+
+
+    __tmp = []
+    for i in range(len(detectedWords)):
+      __tmp.append([])
+      for j in range(len(words)):
+        __tmp[i].append([detectedWords[i][0] - min(words[j][1][0][1], words[j][1][1][1]), words[j][0]])
+    __tmp.sort()
+    __tmpSorted = []
+    for item in __tmp:
+      if len(detectedWords) == 2:
+        __tmpSorted.append([item[0][1], item[1][1]])
+      elif len(detectedWords) >= 3:
+        if item[1][0] - item[0][0] >= 0.1:
+          pass
+        else:
+          if item[2][0] - item[1][0] >= 0.1:
+            __tmpSorted.append([item[0][1], item[1][1]])
+          else:
+            __tmpSorted.append([item[0][1], item[1][1], item[2][1]])
+    
+    __tmp = []
+    __buffer = 0
+    __buffer1 = 0
+    itemCheck1 = False
+    itemCheck2 = False
+    itemCheck3 = False
+    for item in __tmpSorted[0]:
+      for item1 in words:
+        if item == item1[0]:
+          if len(__tmp) == 0 and itemCheck1 == False:
+            __tmp.append(item)
+            __buffer = min(item1[1][0][0], item1[1][3][0])
+            itemCheck1 == True
+          elif len(__tmp) == 1 and itemCheck2 == False:
+            if __buffer > min(item1[1][0][0], item1[1][3][0]):
+              __tmp.insert(0, item)
+            else:
+              __tmp.append(item)
+            __buffer1 = min(item1[1][0][0], item1[1][3][0])
+            itemCheck2 == True
+          else:
+            if itemCheck3 == False:
+              if __buffer > min(item1[1][0][0], item1[1][3][0]):
+                if __buffer1 > min(item1[1][0][0], item1[1][3][0]):
+                  __tmp.insert(0, item)
+                else:
+                  __tmp.insert(1, item)
+              else:
+                __tmp.append(item)
+              itemCheck3 == True
+            else:
+              break
+
+    firstCode = []
+    secondCode = []
+    thirdCode = []
+    realFirstCode = 0
+    realSecondCode = 0
+    if len(__tmpSorted[0]) == 2:
+      firstCode = [__tmp.index(__tmpSorted[0][0]) for _ in __tmp]
+      secondCode = [__tmp.index(__tmpSorted[0][1]) for _ in __tmp]
+      firstCode = min(firstCode)
+      secondCode = min(secondCode)
+      realFirstCode = min(firstCode, secondCode)
+      realSecondCode = max(firstCode, secondCode)
+      codeResult = [None, None]
+      codeResult[0] = __tmp[realFirstCode]
+      codeResult[1] = __tmp[realSecondCode]
+    elif len(__tmpSorted[0]) == 3:
+      realThirdCode = 0
+      codeResult = [None, None, None]
+      firstCode = [__tmp.index(__tmpSorted[0][0]) for _ in __tmp]
+      secondCode = [__tmp.index(__tmpSorted[0][1]) for _ in __tmp]
+      thirdCode = [__tmp.index(__tmpSorted[0][2]) for _ in __tmp]
+      firstCode = min(firstCode)
+      secondCode = min(secondCode)
+      thirdCode = min(thirdCode)
+      realFirstCode = min(firstCode, secondCode, thirdCode)
+      realSecondCode = statistics.median([firstCode, secondCode, thirdCode])
+      realThirdCode = max(firstCode, secondCode, thirdCode)
+      codeResult[0] = __tmp[realFirstCode]
+      codeResult[1] = __tmp[realSecondCode]
+      codeResult[2] = __tmp[realThirdCode]
+    else:
+      pass
+
+    for item in words:
+      if item[0] in codeResult:
+        if eta == 0:
+          leftX = min(item[1][0][0], item[1][3][0])
+          rightX = max(item[1][1][0], item[1][2][0])
+          topY = min(item[1][0][1], item[1][1][1])
+          bottomY = max(item[1][2][1], item[1][3][1])
+          if topY > bottomY:
+            topY = min(item[1][2][1], item[1][3][1])
+            bottomY = max(item[1][0][1], item[1][1][1])
+            leftX = min(item[1][1][0], item[1][2][0])
+            rightX = max(item[1][0][0], item[1][3][0])
+            upsideDown = True
+          eta += 1
+        else:
+          if upsideDown == True:
+            if leftX > min(item[1][1][0], item[1][2][0]):
+              leftX = min(item[1][1][0], item[1][2][0])
+            if rightX < max(item[1][0][0], item[1][3][0]):
+              rightX = max(item[1][0][0], item[1][3][0])
+            if topY > min(item[1][2][1], item[1][3][1]):
+              topY = min(item[1][2][1], item[1][3][1])
+            if bottomY < max(item[1][0][1], item[1][1][1]):
+              bottomY = max(item[1][0][1], item[1][1][1])
+          else:
+            if leftX > min(item[1][0][0], item[1][3][0]):
+              leftX = min(item[1][0][0], item[1][3][0])
+            if rightX < max(item[1][1][0], item[1][2][0]):
+              rightX = max(item[1][1][0], item[1][2][0])
+            if topY > min(item[1][0][1], item[1][1][1]):
+              topY = min(item[1][0][1], item[1][1][1])
+            if bottomY < max(item[1][2][1], item[1][3][1]):
+              bottomY = max(item[1][2][1], item[1][3][1])
+    
+    leftX *= w
+    rightX *= w
+    topY *= h
+    bottomY *= h
+
+    __tmp = codeResult
+
+    if upsideDown == True:
+      print((w-rightX, h-bottomY, w-leftX, h-topY))
+      __tmp.reverse()
+      images.append(((w-rightX, h-bottomY, w-leftX, h-topY), angle+180, __tmp))
+    else:
+      print((leftX, topY, rightX, bottomY))
+      images.append(((leftX, topY, rightX, bottomY), angle, __tmp))
+    return images
+  
+
+  def findCodeInImage(self, angle: float, eta=0, words=[]) -> tuple[Image.Image, float, int]:
+    img = self.img.rotate(angle=float(angle*eta))
+    w, h = img.size
+    isUpper = False
+    textDetected = self.__MODEL([numpy.asarray(img)])
+    wordsInPicture = []
+    etaWords = []
+    for item in textDetected.export()["pages"][0]["blocks"]:
       for item1 in item["lines"]:
         for item2 in item1["words"]:
-          if item2["value"] == "HIMOYA":
-            minimalX = min(item2["geometry"][0][0], item2["geometry"][3][0])
-            maximalX = max(item2["geometry"][1][0], item2["geometry"][2][0])
-            diffWidth = maximalX - minimalX
-            preWidth = (minimalX - diffWidth) * w
-            endWidth = (maximalX + diffWidth / 2) * w
-            minimalY = min(item2["geometry"][0][1], item2["geometry"][1][1])
-            maximalY = max(item2["geometry"][2][1], item2["geometry"][3][1])
-            diffHeight = maximalY - minimalY
-            preHeight = minimalY * h
-            endHeight = (minimalY + (diffHeight * 8)) * h
-
-            if item2["geometry"][0][1] != item2["geometry"][1][1]:
-              k = 1
-              b = item2["geometry"][1][1] - item2["geometry"][0][1]
-              if b < 0:
-                k = -1
-              b = abs(b)
-              a = item2["geometry"][1][0] - item2["geometry"][0][0]
-              angle = k*math.degrees(math.atan(b/a))
-            images.append(((preWidth, preHeight, endWidth, endHeight), angle))
-    return images
+          isUpper = re.match(r"[ABDEFGKLMNPRSTXZ]{3}", item2["value"])
+          if len(item2["value"]) == 3 and isUpper is not None:
+            wordsInPicture.append([item2["value"], item2["geometry"]])
+            etaWords.append(item2["value"])
+        if len(etaWords) < 2:
+          etaWords = []
+    if len(etaWords) >= 2:
+      return img, float(angle*eta), eta, wordsInPicture
+    else:
+      wordsInPicture = []
+      newAngle = float(float(30) / (int(eta/12) + 1))
+      k = int(eta/12) + 1
+      img, angle, stack, words = self.findCodeInImage(newAngle, eta=eta+(1/k))
+      return img, angle, stack, words
