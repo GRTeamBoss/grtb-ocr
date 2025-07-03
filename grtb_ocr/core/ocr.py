@@ -52,94 +52,167 @@ class OCR:
     eta = 0
     upsideDown = False
 
+    print("[words] - ", words)
     for item in words:
       detectedWords.append([min(item[1][0][1], item[1][1][1]), item[0]])
-
-
-    __tmp = []
-    for i in range(len(detectedWords)):
-      __tmp.append([])
-      for j in range(len(words)):
-        __tmp[i].append([detectedWords[i][0] - min(words[j][1][0][1], words[j][1][1][1]), words[j][0]])
-    __tmp.sort()
-    __tmpSorted = []
-    for item in __tmp:
-      if len(detectedWords) == 2:
-        __tmpSorted.append([item[0][1], item[1][1]])
-      elif len(detectedWords) >= 3:
-        if item[1][0] - item[0][0] >= 0.1:
-          pass
-        else:
-          if item[2][0] - item[1][0] >= 0.1:
-            __tmpSorted.append([item[0][1], item[1][1]])
-          else:
-            __tmpSorted.append([item[0][1], item[1][1], item[2][1]])
-    
-    __tmp = []
-    __buffer = 0
-    __buffer1 = 0
-    itemCheck1 = False
-    itemCheck2 = False
-    itemCheck3 = False
-    for item in __tmpSorted[0]:
-      for item1 in words:
-        if item == item1[0]:
-          if len(__tmp) == 0 and itemCheck1 == False:
-            __tmp.append(item)
-            __buffer = min(item1[1][0][0], item1[1][3][0])
-            itemCheck1 == True
-          elif len(__tmp) == 1 and itemCheck2 == False:
-            if __buffer > min(item1[1][0][0], item1[1][3][0]):
-              __tmp.insert(0, item)
-            else:
-              __tmp.append(item)
-            __buffer1 = min(item1[1][0][0], item1[1][3][0])
-            itemCheck2 == True
-          else:
-            if itemCheck3 == False:
-              if __buffer > min(item1[1][0][0], item1[1][3][0]):
-                if __buffer1 > min(item1[1][0][0], item1[1][3][0]):
-                  __tmp.insert(0, item)
-                else:
-                  __tmp.insert(1, item)
-              else:
-                __tmp.append(item)
-              itemCheck3 == True
-            else:
-              break
 
     firstCode = []
     secondCode = []
     thirdCode = []
     realFirstCode = 0
     realSecondCode = 0
-    if len(__tmpSorted[0]) == 2:
-      firstCode = [__tmp.index(__tmpSorted[0][0]) for _ in __tmp]
-      secondCode = [__tmp.index(__tmpSorted[0][1]) for _ in __tmp]
-      firstCode = min(firstCode)
-      secondCode = min(secondCode)
-      realFirstCode = min(firstCode, secondCode)
-      realSecondCode = max(firstCode, secondCode)
-      codeResult = [None, None]
-      codeResult[0] = __tmp[realFirstCode]
-      codeResult[1] = __tmp[realSecondCode]
-    elif len(__tmpSorted[0]) == 3:
-      realThirdCode = 0
-      codeResult = [None, None, None]
-      firstCode = [__tmp.index(__tmpSorted[0][0]) for _ in __tmp]
-      secondCode = [__tmp.index(__tmpSorted[0][1]) for _ in __tmp]
-      thirdCode = [__tmp.index(__tmpSorted[0][2]) for _ in __tmp]
-      firstCode = min(firstCode)
-      secondCode = min(secondCode)
-      thirdCode = min(thirdCode)
-      realFirstCode = min(firstCode, secondCode, thirdCode)
-      realSecondCode = statistics.median([firstCode, secondCode, thirdCode])
-      realThirdCode = max(firstCode, secondCode, thirdCode)
-      codeResult[0] = __tmp[realFirstCode]
-      codeResult[1] = __tmp[realSecondCode]
-      codeResult[2] = __tmp[realThirdCode]
+    codeResult = []
+
+    if len(detectedWords) < 4:
+      __tmp = []
+      __tmpSorted = []
+
+      for item in words:
+        __tmp.append(item[0])
+      __tmpSorted.append(__tmp.copy())
+
+      __tmp = []
+      __buffer = 0
+      __buffer1 = 0
+      itemCheck1 = False
+      itemCheck2 = False
+      itemCheck3 = False
+      for item in __tmpSorted[0]:
+        for item1 in words:
+          if item == item1[0]:
+            if len(__tmp) == 0 and itemCheck1 == False:
+              __tmp.append(item)
+              __buffer = min(item1[1][0][0], item1[1][3][0])
+              itemCheck1 == True
+            elif len(__tmp) == 1 and itemCheck2 == False:
+              if __buffer > min(item1[1][0][0], item1[1][3][0]):
+                __tmp.insert(0, item)
+              else:
+                __tmp.append(item)
+              __buffer1 = min(item1[1][0][0], item1[1][3][0])
+              itemCheck2 == True
+            else:
+              if itemCheck3 == False:
+                if __buffer > min(item1[1][0][0], item1[1][3][0]):
+                  if __buffer1 > min(item1[1][0][0], item1[1][3][0]):
+                    __tmp.insert(0, item)
+                  else:
+                    __tmp.insert(1, item)
+                else:
+                  __tmp.append(item)
+                itemCheck3 == True
+              else:
+                break
+      if len(detectedWords) == 2:
+        firstCode = [__tmp.index(__tmpSorted[0][0]) for _ in __tmp]
+        secondCode = [__tmp.index(__tmpSorted[0][1]) for _ in __tmp]
+        firstCode = min(firstCode)
+        secondCode = min(secondCode)
+        realFirstCode = min(firstCode, secondCode)
+        realSecondCode = max(firstCode, secondCode)
+        codeResult = [None, None]
+        codeResult[0] = __tmp[realFirstCode]
+        codeResult[1] = __tmp[realSecondCode]
+      elif len(detectedWords) == 3:
+        realThirdCode = 0
+        codeResult = [None, None, None]
+        firstCode = [__tmp.index(__tmpSorted[0][0]) for _ in __tmp]
+        secondCode = [__tmp.index(__tmpSorted[0][1]) for _ in __tmp]
+        thirdCode = [__tmp.index(__tmpSorted[0][2]) for _ in __tmp]
+        firstCode = min(firstCode)
+        secondCode = min(secondCode)
+        thirdCode = min(thirdCode)
+        realFirstCode = min(firstCode, secondCode, thirdCode)
+        realSecondCode = statistics.median([firstCode, secondCode, thirdCode])
+        realThirdCode = max(firstCode, secondCode, thirdCode)
+        codeResult[0] = __tmp[realFirstCode]
+        codeResult[1] = __tmp[realSecondCode]
+        codeResult[2] = __tmp[realThirdCode]
+      else:
+        pass
     else:
-      pass
+      __tmp = []
+      __tmpSorted = []
+      for i in range(len(detectedWords)):
+        __tmp.append([])
+        for j in range(len(words)):
+          __tmp[i].append([detectedWords[i][0] - min(words[j][1][0][1], words[j][1][1][1]), words[j][0]])
+      __tmp.sort()
+      __tmpSorted = []
+      __tmpSorted.append([])
+      for item in __tmp:
+        __tmpSorted[0].append([])
+
+        if len(detectedWords) == 2:
+          __tmpSorted.append([item[0][1], item[1][1]])
+        elif len(detectedWords) >= 3:
+          if abs(item[1][0] - item[0][0]) >= 0.1:
+            __tmpSorted.append([item[1][1], item[2][1]])
+          else:
+            if abs(item[2][0] - item[1][0]) >= 0.04:
+              __tmpSorted.append([item[0][1], item[1][1]])
+            else:
+              __tmpSorted.append([item[0][1], item[1][1], item[2][1]])
+
+      __tmp = []
+      __buffer = 0
+      __buffer1 = 0
+      itemCheck1 = False
+      itemCheck2 = False
+      itemCheck3 = False
+      for item in detectedWords:
+        for item1 in words:
+          if item[1] == item1[0]:
+            if len(__tmp) == 0 and itemCheck1 == False:
+              __tmp.append(item)
+              __buffer = min(item1[1][0][0], item1[1][3][0])
+              itemCheck1 == True
+            elif len(__tmp) == 1 and itemCheck2 == False:
+              if __buffer > min(item1[1][0][0], item1[1][3][0]):
+                __tmp.insert(0, item)
+              else:
+                __tmp.append(item)
+              __buffer1 = min(item1[1][0][0], item1[1][3][0])
+              itemCheck2 == True
+            else:
+              if itemCheck3 == False:
+                if __buffer > min(item1[1][0][0], item1[1][3][0]):
+                  if __buffer1 > min(item1[1][0][0], item1[1][3][0]):
+                    __tmp.insert(0, item)
+                  else:
+                    __tmp.insert(1, item)
+                else:
+                  __tmp.append(item)
+                itemCheck3 == True
+              else:
+                break
+      if len(__tmpSorted[0]) == 2:
+        firstCode = [__tmp.index(__tmpSorted[0][0]) for _ in __tmp]
+        secondCode = [__tmp.index(__tmpSorted[0][1]) for _ in __tmp]
+        firstCode = min(firstCode)
+        secondCode = min(secondCode)
+        realFirstCode = min(firstCode, secondCode)
+        realSecondCode = max(firstCode, secondCode)
+        codeResult = [None, None]
+        codeResult[0] = __tmp[realFirstCode]
+        codeResult[1] = __tmp[realSecondCode]
+      elif len(__tmpSorted[0]) == 3:
+        realThirdCode = 0
+        codeResult = [None, None, None]
+        firstCode = [__tmp.index(__tmpSorted[0][0]) for _ in __tmp]
+        secondCode = [__tmp.index(__tmpSorted[0][1]) for _ in __tmp]
+        thirdCode = [__tmp.index(__tmpSorted[0][2]) for _ in __tmp]
+        firstCode = min(firstCode)
+        secondCode = min(secondCode)
+        thirdCode = min(thirdCode)
+        realFirstCode = min(firstCode, secondCode, thirdCode)
+        realSecondCode = statistics.median([firstCode, secondCode, thirdCode])
+        realThirdCode = max(firstCode, secondCode, thirdCode)
+        codeResult[0] = __tmp[realFirstCode]
+        codeResult[1] = __tmp[realSecondCode]
+        codeResult[2] = __tmp[realThirdCode]
+      else:
+        pass
 
     for item in words:
       if item[0] in codeResult:
@@ -199,6 +272,8 @@ class OCR:
     textDetected = self.__MODEL([numpy.asarray(img)])
     wordsInPicture = []
     etaWords = []
+    space = 0
+    word = 0
     for item in textDetected.export()["pages"][0]["blocks"]:
       for item1 in item["lines"]:
         for item2 in item1["words"]:
@@ -206,9 +281,19 @@ class OCR:
           if len(item2["value"]) == 3 and isUpper is not None:
             wordsInPicture.append([item2["value"], item2["geometry"]])
             etaWords.append(item2["value"])
+            word += 1
+        print("[etaWords] - ", etaWords)
+        if len(etaWords) == 0:
+          word = 0
+        if word == 3:
+          print("[etaWords] [== 3] [final] - ", etaWords)
+          return img, float(angle*eta), eta, wordsInPicture[-3::]
         if len(etaWords) < 2:
           etaWords = []
     if len(etaWords) >= 2:
+      print("[etaWords] [>= 2] [final] - ", etaWords)
+      if word == 2:
+        return img, float(angle*eta), eta, wordsInPicture[-2::]
       return img, float(angle*eta), eta, wordsInPicture
     else:
       wordsInPicture = []
