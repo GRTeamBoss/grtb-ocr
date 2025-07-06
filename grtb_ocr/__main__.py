@@ -41,13 +41,19 @@ async def typeFileHandler(message: Message) -> None:
   file = message.document
   source = await bot.download(file)
   detection = OCR(source.read()).detect()
-  await message.answer(f"{detection[1]}")
+  if detection[0] == None:
+    await message.answer('\n'.join(detection[1]))
+  else:
+    await message.answer(f"{detection[1]}")
 
 @router.message(F.photo)
 async def typePhotoHandler(message: Message) -> None:
   source = await bot.download(message.photo[-1])
   detection = OCR(source.read()).detect()
-  await message.answer_photo(BufferedInputFile(detection[0][0], filename=f"{message.date}+{message.photo[-1].file_unique_id}.jpg"), caption='\n'.join(detection[1]))
+  if detection[0] == None:
+    await message.answer('\n'.join(detection[1]))
+  else:
+    await message.answer_photo(BufferedInputFile(detection[0][0], filename=f"{message.date}+{message.photo[-1].file_unique_id}.jpg"), caption='\n'.join(detection[1]))
 
 
 async def main() -> None:
