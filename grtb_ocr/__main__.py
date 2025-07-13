@@ -1,10 +1,10 @@
 import sys
 import logging
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-
 import ssl
 import asyncio
 from os import getenv
+from getopt import getopt
 
 from aiohttp import web
 
@@ -53,32 +53,52 @@ async def typePhotoHandler(message: Message) -> None:
   if detection[0] == None:
     await message.answer('\n'.join(detection[1]))
   else:
-    await message.answer_photo(BufferedInputFile(detection[0][0], filename=f"{message.date}+{message.photo[-1].file_unique_id}.jpg"), caption='\n'.join(detection[1]))
+    await message.answer_photo(BufferedInputFile(detection[0], filename=f"{message.date}+{message.photo[-1].file_unique_id}.jpg"), caption=' '.join(detection[1]))
 
 
-async def main() -> None:
+def main() -> None:
+  try:
+    opts, args = getopt(sys.argv[1:], "wd", ["web", "dev"])
+    print("[opts]", opts)
+  except Exception as err:
+    print(">>> python grtb_ocr/__main__.py [-w] [-d]; echo '-w --- web(on server) | -d --- dev(on machine)'")
+    exit(2)
+  
+  for opt, arg in opts:
+    match opt:
+      case "-w":
+        print("[#] OnServer() launch")
+        onServer()
+      case "-d":
+        print("[#] OnMachine() launch")
+        asyncio.run(onMachine())
+      case _:
+        print("Try again!")
+        exit(1)
+
+
+async def onMachine() -> None:
   dp.include_router(router)
   await dp.start_polling(bot)
 
 
-# async def onStartup(bot: Bot) -> None:
-#   # await bot.set_webhook(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}", certificate=FSInputFile(WEBHOOK_SSL_CERT), secret_token=WEBHOOK_SECRET,)
-#   await bot.set_webhook(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}", secret_token=WEBHOOK_SECRET)
+async def onStartup(bot: Bot) -> None:
+  # await bot.set_webhook(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}", certificate=FSInputFile(WEBHOOK_SSL_CERT), secret_token=WEBHOOK_SECRET,)
+  await bot.set_webhook(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}", secret_token=WEBHOOK_SECRET)
 
 
-# def main() -> None:
-#   dp.include_router(router)
-#   dp.startup.register(onStartup)
-#   app = web.Application()
-#   webhookRequestsHandler = SimpleRequestHandler(dispatcher=dp, bot=bot, secret_token=WEBHOOK_SECRET,)
-#   webhookRequestsHandler.register(app, path=WEBHOOK_PATH)
-#   setup_application(app, dp, bot=bot)
-#   # context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-#   # context.load_cert_chain(WEBHOOK_SSL_CERT, WEBHOOK_SSL_PRIV)
-#   # web.run_app(app, host=WEBSERVER_HOST, port=WEBSERVER_PORT, ssl_context=context)
-#   web.run_app(app, host=WEBSERVER_HOST, port=WEBSERVER_PORT)
+def onServer() -> None:
+  dp.include_router(router)
+  dp.startup.register(onStartup)
+  app = web.Application()
+  webhookRequestsHandler = SimpleRequestHandler(dispatcher=dp, bot=bot, secret_token=WEBHOOK_SECRET,)
+  webhookRequestsHandler.register(app, path=WEBHOOK_PATH)
+  setup_application(app, dp, bot=bot)
+  # context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+  # context.load_cert_chain(WEBHOOK_SSL_CERT, WEBHOOK_SSL_PRIV)
+  # web.run_app(app, host=WEBSERVER_HOST, port=WEBSERVER_PORT, ssl_context=context)
+  web.run_app(app, host=WEBSERVER_HOST, port=WEBSERVER_PORT)
 
 
 if __name__ == "__main__":
-  # main()
-  asyncio.run(main())
+  main()
